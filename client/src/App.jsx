@@ -6,41 +6,39 @@ import './App.css'
 
 const Latex = ({ math }) => {
   const containerRef = useRef(null);
-
   useEffect(() => {
     if (containerRef.current) {
-      katex.render(math, containerRef.current, {
-        throwOnError: false
-      });
+      katex.render(math, containerRef.current, { throwOnError: false });
     }
   }, [math]);
-
   return <span ref={containerRef} />;
 };
 
-// Example circuits
+// Preset examples with canvas positions
 const EXAMPLES = {
   'series-rc': {
-    name: 'Series RC Circuit',
+    name: '⚡ Series RC',
     nodes: ['0', '1', '2'],
     branches: [
       { id: 'V1', from: '1', to: '0', type: 'V', value: 10 },
       { id: 'R1', from: '1', to: '2', type: 'R', value: 5 },
       { id: 'C1', from: '2', to: '0', type: 'C', value: 0.1 }
-    ]
+    ],
+    positions: { '0': { x: 350, y: 340 }, '1': { x: 180, y: 140 }, '2': { x: 530, y: 140 } }
   },
   'series-rlc': {
-    name: 'Series RLC Circuit',
+    name: '🔄 Series RLC',
     nodes: ['0', '1', '2', '3'],
     branches: [
       { id: 'V1', from: '1', to: '0', type: 'V', value: 10 },
       { id: 'R1', from: '1', to: '2', type: 'R', value: 2 },
       { id: 'L1', from: '2', to: '3', type: 'L', value: 0.5 },
       { id: 'C1', from: '3', to: '0', type: 'C', value: 0.2 }
-    ]
+    ],
+    positions: { '0': { x: 350, y: 340 }, '1': { x: 120, y: 140 }, '2': { x: 310, y: 140 }, '3': { x: 530, y: 140 } }
   },
   'complex': {
-    name: 'Complex Multi-Loop',
+    name: '🌐 Complex Loop',
     nodes: ['0', '1', '2', '3'],
     branches: [
       { id: 'V1', from: '1', to: '0', type: 'V', value: 10 },
@@ -49,308 +47,576 @@ const EXAMPLES = {
       { id: 'C1', from: '2', to: '0', type: 'C', value: 0.5 },
       { id: 'R2', from: '3', to: '0', type: 'R', value: 4 },
       { id: 'I1', from: '0', to: '3', type: 'I', value: 2 }
-    ]
+    ],
+    positions: { '0': { x: 350, y: 340 }, '1': { x: 120, y: 140 }, '2': { x: 350, y: 140 }, '3': { x: 560, y: 140 } }
   }
+};
+
+const COMPONENT_TYPES = [
+  { type: 'R', name: 'Resistor', unit: 'Ω', color: '#7c3aed' },
+  { type: 'L', name: 'Inductor', unit: 'H', color: '#d97706' },
+  { type: 'C', name: 'Capacitor', unit: 'F', color: '#0891b2' },
+  { type: 'V', name: 'Voltage Src', unit: 'V', color: '#dc2626' },
+  { type: 'I', name: 'Current Src', unit: 'A', color: '#2563eb' },
+];
+
+// Ground symbol
+const GroundSymbol = ({ x, y }) => (
+  <g transform={`translate(${x}, ${y})`}>
+    <line x1="0" y1="0" x2="0" y2="16" stroke="#059669" strokeWidth="2.5" />
+    <line x1="-12" y1="16" x2="12" y2="16" stroke="#059669" strokeWidth="2.5" />
+    <line x1="-7" y1="21" x2="7" y2="21" stroke="#059669" strokeWidth="2" />
+    <line x1="-3" y1="26" x2="3" y2="26" stroke="#059669" strokeWidth="1.5" />
+  </g>
+);
+
+// Mini symbol SVGs for the left toolbox
+const MiniSymbol = ({ type, color }) => {
+  const c = color || '#0f172a';
+  if (type === 'R') return (
+    <svg width="48" height="20" viewBox="0 0 48 20"><path d="M0 10 H10 L12 2 L16 18 L20 2 L24 18 L28 2 L32 18 L34 10 H48" fill="none" stroke={c} strokeWidth="1.8"/></svg>
+  );
+  if (type === 'C') return (
+    <svg width="48" height="20" viewBox="0 0 48 20"><path d="M0 10 H19 M19 2 V18 M27 2 V18 M27 10 H48" fill="none" stroke={c} strokeWidth="1.8"/></svg>
+  );
+  if (type === 'L') return (
+    <svg width="48" height="20" viewBox="0 0 48 20"><path d="M0 10 H8 Q11 0 14 10 Q17 0 20 10 Q23 0 26 10 Q29 0 32 10 Q35 0 38 10 H48" fill="none" stroke={c} strokeWidth="1.8"/></svg>
+  );
+  if (type === 'V') return (
+    <svg width="48" height="20" viewBox="0 0 48 20"><circle cx="24" cy="10" r="8" fill="none" stroke={c} strokeWidth="1.8"/><path d="M0 10 H16 M32 10 H48" fill="none" stroke={c} strokeWidth="1.8"/><path d="M21 10 H23 M22 8 V12" stroke={c} strokeWidth="1"/><path d="M25 10 H27" stroke={c} strokeWidth="1"/></svg>
+  );
+  if (type === 'I') return (
+    <svg width="48" height="20" viewBox="0 0 48 20"><circle cx="24" cy="10" r="8" fill="none" stroke={c} strokeWidth="1.8"/><path d="M0 10 H16 M32 10 H48" fill="none" stroke={c} strokeWidth="1.8"/><path d="M20 10 H28 M25 7 L28 10 L25 13" fill="none" stroke={c} strokeWidth="1"/></svg>
+  );
+  return null;
+};
+
+// Full-size schematic component rendered on SVG canvas
+const ComponentSymbol = ({ type, x1, y1, x2, y2, value, id, onSelect, isSelected }) => {
+  const dx = x2 - x1, dy = y2 - y1;
+  const L = Math.sqrt(dx * dx + dy * dy);
+  if (L === 0) return null;
+  const theta = (Math.atan2(dy, dx) * 180) / Math.PI;
+  const midX = (x1 + x2) / 2, midY = (y1 + y2) / 2;
+
+  let symbolPath = "";
+  let wireStart = `M 0 0 L ${L / 2 - 25} 0`;
+  let wireEnd = `M ${L / 2 + 25} 0 L ${L} 0`;
+
+  if (type === 'R') {
+    const s = L / 2 - 25;
+    symbolPath = `M ${s} 0 L ${s+4} -8 L ${s+11} 8 L ${s+18} -8 L ${s+25} 8 L ${s+32} -8 L ${s+39} 8 L ${s+46} -8 L ${s+50} 0`;
+  } else if (type === 'C') {
+    const s = L / 2 - 5;
+    symbolPath = `M ${s} -14 V 14 M ${s+10} -14 V 14`;
+    wireStart = `M 0 0 L ${s} 0`;
+    wireEnd = `M ${s+10} 0 L ${L} 0`;
+  } else if (type === 'L') {
+    const s = L / 2 - 20;
+    symbolPath = `M ${s} 0 Q ${s+5} -12 ${s+10} 0 Q ${s+15} -12 ${s+20} 0 Q ${s+25} -12 ${s+30} 0 Q ${s+35} -12 ${s+40} 0`;
+    wireStart = `M 0 0 L ${s} 0`;
+    wireEnd = `M ${s+40} 0 L ${L} 0`;
+  } else if (type === 'V' || type === 'I') {
+    const cx = L / 2;
+    wireStart = `M 0 0 L ${cx - 15} 0`;
+    wireEnd = `M ${cx + 15} 0 L ${L} 0`;
+  }
+
+  const compInfo = COMPONENT_TYPES.find(c => c.type === type);
+  const accentColor = isSelected ? (compInfo?.color || '#2563eb') : '#0f172a';
+  const wireColor = isSelected ? (compInfo?.color || '#2563eb') : '#475569';
+  const unitLabel = compInfo?.unit || '';
+
+  return (
+    <g className="schematic-branch-container" onClick={onSelect}>
+      <g transform={`translate(${x1}, ${y1}) rotate(${theta})`}>
+        <rect x="0" y="-18" width={L} height="36" fill="transparent" />
+        <path d={wireStart} className="schematic-branch-path-light" stroke={wireColor} strokeWidth={isSelected ? "2.5" : "2"} />
+        <path d={wireEnd} className="schematic-branch-path-light" stroke={wireColor} strokeWidth={isSelected ? "2.5" : "2"} />
+        {symbolPath && <path d={symbolPath} className="schematic-branch-symbol-light" stroke={accentColor} strokeWidth="2" />}
+
+        {type === 'V' && (
+          <g>
+            <circle cx={L/2} cy="0" r="14" fill="#ffffff" stroke={accentColor} strokeWidth="2" className="schematic-branch-symbol-light" />
+            <path d={`M ${L/2-6} -3 H ${L/2-2} M ${L/2-4} -5 V -1`} stroke="#dc2626" strokeWidth="1.5" />
+            <path d={`M ${L/2+2} 3 H ${L/2+6}`} stroke="#2563eb" strokeWidth="1.5" />
+          </g>
+        )}
+        {type === 'I' && (
+          <g>
+            <circle cx={L/2} cy="0" r="14" fill="#ffffff" stroke={accentColor} strokeWidth="2" className="schematic-branch-symbol-light" />
+            <path d={`M ${L/2-6} 0 H ${L/2+6} M ${L/2+3} -3 L ${L/2+6} 0 L ${L/2+3} 3`} stroke="#2563eb" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+          </g>
+        )}
+      </g>
+      <g transform={`translate(${midX}, ${midY - 18})`}>
+        <text className="schematic-branch-text-light" fill={isSelected ? accentColor : '#64748b'} style={{ textAnchor:'middle', fontSize:'10.5px', fontWeight: isSelected ? 700 : 600 }}>
+          {id} = {value}{unitLabel}
+        </text>
+      </g>
+    </g>
+  );
 };
 
 function App() {
   const [nodes, setNodes] = useState(['0'])
   const [branches, setBranches] = useState([])
-  const [newBranch, setNewBranch] = useState({
-    from: '1', to: '0', type: 'R', value: 10
-  })
+  const [selectedType, setSelectedType] = useState('R')
+  const [componentValue, setComponentValue] = useState(10)
+  const [formFrom, setFormFrom] = useState('1')
+  const [formTo, setFormTo] = useState('0')
+
+  const [nodePositions, setNodePositions] = useState({ '0': { x: 350, y: 340 } })
+  const [draggedNode, setDraggedNode] = useState(null)
+  const [tool, setTool] = useState('wire')
+  const [isDraggingWire, setIsDraggingWire] = useState(false)
+  const [drawingWireFrom, setDrawingWireFrom] = useState(null)
+  const [drawStartCoords, setDrawStartCoords] = useState(null)
+  const [mousePos, setMousePos] = useState({ x: 0, y: 0 })
+  const [selectedBranchIndex, setSelectedBranchIndex] = useState(null)
+
   const [results, setResults] = useState(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
   const [validationError, setValidationError] = useState('')
-  const [showHelp, setShowHelp] = useState(false)
 
-  const addBranch = () => {
-    // Validation
-    if (!newBranch.from || !newBranch.to) {
-      setValidationError('From and To nodes are required');
+  const svgRef = useRef(null)
+
+  const ensureNodePosition = (nodeLabel, customCoords = null) => {
+    if (nodePositions[nodeLabel]) return nodePositions[nodeLabel];
+    let position;
+    if (customCoords) {
+      position = customCoords;
+    } else {
+      const idx = parseInt(nodeLabel) || 0;
+      if (nodeLabel === '0') { position = { x: 350, y: 340 }; }
+      else {
+        const cols = 4;
+        const row = Math.floor((idx - 1) / cols);
+        const col = (idx - 1) % cols;
+        position = { x: 100 + col * 160, y: 100 + row * 140 };
+      }
+    }
+    setNodePositions(prev => ({ ...prev, [nodeLabel]: position }));
+    return position;
+  }
+
+  const loadExample = (key) => {
+    const ex = EXAMPLES[key];
+    setNodes(ex.nodes);
+    setBranches(ex.branches);
+    setNodePositions(ex.positions);
+    setResults(null); setError(null); setValidationError('');
+    setSelectedBranchIndex(null); setDrawingWireFrom(null); setIsDraggingWire(false);
+  }
+
+  const getMouseCoords = (e) => {
+    if (!svgRef.current) return { x: 0, y: 0 };
+    const rect = svgRef.current.getBoundingClientRect();
+    const x = ((e.clientX - rect.left) / rect.width) * 700;
+    const y = ((e.clientY - rect.top) / rect.height) * 460;
+    return { x: Math.round(x / 10) * 10, y: Math.round(y / 10) * 10 };
+  }
+
+  const handleCanvasMouseDown = (e) => {
+    const coords = getMouseCoords(e);
+    if (tool === 'select') {
+      for (const [label, pos] of Object.entries(nodePositions)) {
+        if (Math.sqrt((pos.x - coords.x)**2 + (pos.y - coords.y)**2) < 18) {
+          setDraggedNode(label); return;
+        }
+      }
       return;
     }
-    if (newBranch.from === newBranch.to) {
-      setValidationError('From and To nodes must be different');
-      return;
+    if (tool === 'wire') {
+      e.preventDefault();
+      let clickedNode = null;
+      for (const [label, pos] of Object.entries(nodePositions)) {
+        if (Math.sqrt((pos.x - coords.x)**2 + (pos.y - coords.y)**2) < 18) {
+          clickedNode = label; break;
+        }
+      }
+      setDrawingWireFrom(clickedNode !== null ? clickedNode : 'NEW_START');
+      setDrawStartCoords(coords);
+      setMousePos(coords);
+      setIsDraggingWire(true);
     }
-    if (!newBranch.value || newBranch.value <= 0) {
-      setValidationError('Value must be positive');
-      return;
+  }
+
+  const handleCanvasMouseMove = (e) => {
+    const coords = getMouseCoords(e);
+    if (draggedNode !== null) {
+      setNodePositions(prev => ({ ...prev, [draggedNode]: coords }));
+    } else if (isDraggingWire) {
+      setMousePos(coords);
+    }
+  }
+
+  const handleCanvasMouseUp = (e) => {
+    if (draggedNode !== null) { setDraggedNode(null); return; }
+    if (!isDraggingWire) return;
+    const coords = getMouseCoords(e);
+    setIsDraggingWire(false);
+
+    let releasedNode = null;
+    for (const [label, pos] of Object.entries(nodePositions)) {
+      if (Math.sqrt((pos.x - coords.x)**2 + (pos.y - coords.y)**2) < 18) {
+        releasedNode = label; break;
+      }
+    }
+    const endToken = releasedNode !== null ? releasedNode : 'NEW_END';
+    if (drawingWireFrom === endToken && drawingWireFrom !== 'NEW_START') {
+      setDrawingWireFrom(null); return;
     }
 
+    let startLabel, endLabel;
+    const currentNodes = [...nodes];
+
+    if (drawingWireFrom === 'NEW_START') {
+      let n = 0; while (currentNodes.includes(n.toString())) n++;
+      startLabel = n.toString();
+      setNodePositions(prev => ({ ...prev, [startLabel]: drawStartCoords }));
+      currentNodes.push(startLabel);
+    } else {
+      startLabel = drawingWireFrom;
+    }
+
+    if (endToken === 'NEW_END') {
+      let n = 0; while (currentNodes.includes(n.toString()) || n.toString() === startLabel) n++;
+      endLabel = n.toString();
+      setNodePositions(prev => ({ ...prev, [endLabel]: coords }));
+      currentNodes.push(endLabel);
+    } else {
+      endLabel = endToken;
+    }
+
+    if (startLabel !== endLabel) {
+      setNodes(currentNodes.sort());
+      createBranch(startLabel, endLabel);
+    }
+    setDrawingWireFrom(null); setDrawStartCoords(null);
+  }
+
+  const createBranch = (from, to, customVal = null) => {
+    const val = customVal !== null ? customVal : parseFloat(componentValue);
+    if (isNaN(val) || val <= 0) { setValidationError('Value must be positive'); return; }
     setValidationError('');
-    const id = `${newBranch.type}${branches.length + 1}`
-    const branch = { ...newBranch, id, value: parseFloat(newBranch.value) }
-    setBranches([...branches, branch])
+    const count = branches.filter(b => b.type === selectedType).length + 1;
+    const id = `${selectedType}${count}`;
+    setBranches(prev => [...prev, { id, from, to, type: selectedType, value: val }]);
+    ensureNodePosition(from); ensureNodePosition(to);
+  }
 
-    // Update nodes list
-    const newNodes = new Set(nodes)
-    newNodes.add(branch.from)
-    newNodes.add(branch.to)
-    setNodes(Array.from(newNodes).sort())
+  const addBranchFromForm = () => {
+    if (!formFrom || !formTo) { setValidationError('Both node fields required'); return; }
+    if (formFrom === formTo) { setValidationError('Nodes must be different'); return; }
+    const newN = new Set(nodes); newN.add(formFrom); newN.add(formTo);
+    setNodes(Array.from(newN).sort());
+    ensureNodePosition(formFrom); ensureNodePosition(formTo);
+    createBranch(formFrom, formTo);
   }
 
   const deleteBranch = (index) => {
-    const newBranches = branches.filter((_, i) => i !== index);
-    setBranches(newBranches);
-  }
-
-  const loadExample = (exampleKey) => {
-    const example = EXAMPLES[exampleKey];
-    setNodes(example.nodes);
-    setBranches(example.branches);
-    setResults(null);
-    setError(null);
-    setValidationError('');
-  }
-
-  const analyzeCircuit = async () => {
-    setLoading(true)
-    setError(null)
-    setResults(null)
-
-    try {
-      const payload = {
-        nodes: nodes,
-        branches: branches
-      }
-      const response = await axios.post('http://localhost:3000/analyze', payload)
-
-      if (response.data.status === 'success') {
-        setResults(response.data)
-      } else {
-        setError(response.data.message || 'Analysis failed')
-      }
-    } catch (err) {
-      console.error(err)
-      setError(err.response?.data?.message || err.message || 'Connection failed. Is the server running?')
-    } finally {
-      setLoading(false)
-    }
+    const updated = branches.filter((_, i) => i !== index);
+    setBranches(updated); setSelectedBranchIndex(null);
+    const activeN = new Set(['0']);
+    updated.forEach(b => { activeN.add(b.from); activeN.add(b.to); });
+    setNodes(Array.from(activeN).sort());
   }
 
   const clearCircuit = () => {
-    if (branches.length > 0 && !window.confirm('Clear all branches? This cannot be undone.')) {
-      return;
-    }
-    setBranches([])
-    setNodes(['0'])
-    setResults(null)
-    setError(null)
-    setValidationError('')
+    if (branches.length > 0 && !window.confirm('Clear everything?')) return;
+    setBranches([]); setNodes(['0']); setNodePositions({ '0': { x: 350, y: 340 } });
+    setResults(null); setError(null); setValidationError('');
+    setSelectedBranchIndex(null); setIsDraggingWire(false);
+  }
+
+  const analyzeCircuit = async () => {
+    setLoading(true); setError(null); setResults(null);
+    try {
+      const res = await axios.post('http://localhost:3000/analyze', { nodes, branches });
+      if (res.data.status === 'success') setResults(res.data);
+      else setError(res.data.message || 'Analysis failed');
+    } catch (err) {
+      setError(err.response?.data?.message || err.message || 'Connection failed. Is the server running?');
+    } finally { setLoading(false); }
   }
 
   const exportResults = () => {
     if (!results) return;
-
-    const exportData = {
-      circuit: { nodes, branches },
-      equations: results.equations,
-      timeDomain: results.time_domain,
-      timestamp: new Date().toISOString()
-    };
-
-    const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+    const blob = new Blob([JSON.stringify({ circuit: { nodes, branches }, equations: results.equations, timeDomain: results.time_domain, timestamp: new Date().toISOString() }, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `circuit-analysis-${Date.now()}.json`;
-    a.click();
+    const a = document.createElement('a'); a.href = url; a.download = `circuit-analysis-${Date.now()}.json`; a.click();
     URL.revokeObjectURL(url);
   }
 
   const downloadPlot = (plot) => {
     const a = document.createElement('a');
-    a.href = `data:image/png;base64,${plot.image}`;
-    a.download = `${plot.name}-plot.png`;
-    a.click();
+    a.href = `data:image/png;base64,${plot.image}`; a.download = `${plot.name}.png`; a.click();
+  }
+
+  useEffect(() => { nodes.forEach(n => ensureNodePosition(n)); }, [nodes]);
+
+  const getPreviewStart = () => {
+    if (!isDraggingWire) return { x: 0, y: 0 };
+    if (drawingWireFrom === 'NEW_START') return drawStartCoords;
+    return nodePositions[drawingWireFrom] || drawStartCoords;
   }
 
   return (
     <>
+      {/* HEADER */}
       <div className="header">
-        <h1>🔌 Circuit Solver</h1>
-        <p className="subtitle">Graph Theory & Laplace Transform Analysis</p>
-        <button onClick={() => setShowHelp(!showHelp)} className="help-btn">
-          {showHelp ? '✕ Close Help' : '❓ Help'}
-        </button>
+        <div style={{ display: 'flex', alignItems: 'center' }}>
+          <h1>⚡ Circuit Solver</h1>
+          <span className="subtitle">Graph Theory & Laplace Transform</span>
+        </div>
+        <div style={{ display: 'flex', gap: '0.5rem' }}>
+          {Object.entries(EXAMPLES).map(([key, ex]) => (
+            <button key={key} className="example-btn" style={{ width: 'auto' }} onClick={() => loadExample(key)}>{ex.name}</button>
+          ))}
+        </div>
       </div>
 
-      {showHelp && (
-        <div className="help-panel">
-          <h3>📖 Quick Start Guide</h3>
-          <div className="help-content">
-            <div className="help-section">
-              <h4>🚀 Getting Started</h4>
-              <p>The easiest way is to click a <strong>Quick Example</strong> button, then click <strong>Analyze</strong>.</p>
-            </div>
-            <div className="help-section">
-              <h4>🔧 Building Circuits</h4>
-              <ul>
-                <li><strong>Node 0</strong> is always the reference (ground)</li>
-                <li>Use nodes <strong>1, 2, 3...</strong> for other points</li>
-                <li>All branches must connect to form a complete circuit</li>
-                <li>Values must be positive numbers</li>
-              </ul>
-            </div>
-            <div className="help-section">
-              <h4>⚙️ Component Types</h4>
-              <ul>
-                <li><strong>R (Resistor)</strong>: Resistance in Ohms (Ω)</li>
-                <li><strong>L (Inductor)</strong>: Inductance in Henrys (H)</li>
-                <li><strong>C (Capacitor)</strong>: Capacitance in Farads (F)</li>
-                <li><strong>V (Voltage Source)</strong>: Voltage in Volts (V)</li>
-                <li><strong>I (Current Source)</strong>: Current in Amperes (A)</li>
-              </ul>
-            </div>
-            <div className="help-section">
-              <h4>📊 Understanding Results</h4>
-              <ul>
-                <li><strong>s-domain Equations</strong>: Laplace transform expressions</li>
-                <li><strong>Time Domain</strong>: How values change over time</li>
-                <li><strong>Plots</strong>: Visual graphs from t=0 to t=10 seconds</li>
-              </ul>
-            </div>
-          </div>
-        </div>
-      )}
-
+      {/* 3-COLUMN LAYOUT */}
       <div className="container">
-        <div className="editor">
-          <h2>Circuit Editor</h2>
 
-          <div className="examples-section">
-            <label>Quick Examples:</label>
-            <div className="examples-buttons">
-              <button onClick={() => loadExample('series-rc')} className="example-btn">RC Circuit</button>
-              <button onClick={() => loadExample('series-rlc')} className="example-btn">RLC Circuit</button>
-              <button onClick={() => loadExample('complex')} className="example-btn">Complex</button>
-            </div>
-          </div>
+        {/* LEFT COLUMN — Component Toolbox */}
+        <div className="editor-left">
+          <h2>Components</h2>
 
-          <div className="divider"></div>
-
-          <div className="input-group">
-            <label>Type:</label>
-            <select value={newBranch.type} onChange={e => setNewBranch({ ...newBranch, type: e.target.value })}>
-              <option value="R">Resistor (Ω)</option>
-              <option value="L">Inductor (H)</option>
-              <option value="C">Capacitor (F)</option>
-              <option value="V">Voltage Source (V)</option>
-              <option value="I">Current Source (A)</option>
-            </select>
-          </div>
-
-          <div className="input-group">
-            <label>From Node:</label>
-            <input type="text" value={newBranch.from} onChange={e => setNewBranch({ ...newBranch, from: e.target.value })} placeholder="e.g., 1" />
-          </div>
-
-          <div className="input-group">
-            <label>To Node:</label>
-            <input type="text" value={newBranch.to} onChange={e => setNewBranch({ ...newBranch, to: e.target.value })} placeholder="e.g., 0 (ref)" />
-          </div>
-
-          <div className="input-group">
-            <label>Value:</label>
-            <input type="number" step="0.1" value={newBranch.value} onChange={e => setNewBranch({ ...newBranch, value: e.target.value })} placeholder="e.g., 10" />
-          </div>
-
-          {validationError && <div className="validation-error">{validationError}</div>}
-
-          <div className="button-row">
-            <button onClick={addBranch} className="add-btn">➕ Add Branch</button>
-            <button onClick={clearCircuit} className="clear-btn">🗑️ Clear All</button>
-          </div>
-
-          <div className="branch-list">
-            <h3>Branches ({branches.length})</h3>
-            {branches.length === 0 && <p className="empty-msg">No branches yet. Add one above or load an example.</p>}
-            {branches.map((b, i) => (
-              <div key={i} className="branch-item">
-                <span className="branch-info">{b.id}: {b.from} &rarr; {b.to} ({b.value})</span>
-                <button onClick={() => deleteBranch(i)} className="delete-btn">✕</button>
+          <div className="palette-dock-vertical">
+            {COMPONENT_TYPES.map(comp => (
+              <div
+                key={comp.type}
+                className={`palette-tile-light ${selectedType === comp.type ? 'active' : ''}`}
+                onClick={() => { setSelectedType(comp.type); setTool('wire'); }}
+              >
+                <div className="palette-icon-wrapper-light">
+                  <MiniSymbol type={comp.type} color={selectedType === comp.type ? comp.color : '#64748b'} />
+                </div>
+                <span className="palette-name-light">{comp.name}</span>
               </div>
             ))}
           </div>
 
-          <button
-            onClick={analyzeCircuit}
-            disabled={branches.length === 0 || loading}
-            className="analyze-btn"
-          >
-            {loading ? '⏳ Analyzing...' : '⚡ Analyze Circuit'}
-          </button>
+          <div className="divider"></div>
 
-          {error && <div className="error-msg">❌ {error}</div>}
-        </div>
-
-        <div className="results">
-          <div className="results-header">
-            <h2>Analysis Results</h2>
-            {results && (
-              <button onClick={exportResults} className="export-btn">
-                💾 Export JSON
-              </button>
-            )}
+          {/* Value Slider */}
+          <div className="value-slider-panel">
+            <div className="slider-label-box">
+              <span className="slider-label">Value</span>
+              <span className="slider-value">{componentValue} {COMPONENT_TYPES.find(c => c.type === selectedType)?.unit}</span>
+            </div>
+            <input type="range" min="0.1" max="50" step="0.1" className="visual-range-slider" value={componentValue} onChange={e => setComponentValue(parseFloat(e.target.value))} />
+            <input type="number" step="0.1" value={componentValue} style={{ marginTop: '0.5rem', textAlign: 'center' }} onChange={e => { const v = parseFloat(e.target.value); if (!isNaN(v) && v > 0) setComponentValue(v); }} />
           </div>
 
-          {!results && !loading && (
-            <div className="placeholder">
-              <p>👈 Add circuit components and click <strong>Analyze</strong> to see:</p>
-              <ul>
-                <li>✓ Laplace domain equations</li>
-                <li>✓ Time domain solutions</li>
-                <li>✓ Transient response plots</li>
-              </ul>
+          <div className="divider"></div>
+
+          <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', lineHeight: '1.5' }}>
+            Select a component, set its value, then <strong>drag on the canvas</strong> to place it. Drag between existing nodes to connect them.
+          </p>
+        </div>
+
+        {/* CENTER COLUMN — Canvas */}
+        <div className="editor-middle">
+          <div className="canvas-container-box">
+            <div className="canvas-header-light">
+              <span className="canvas-title-light">
+                {tool === 'wire' ? '✏️ Draw Mode — Drag to place component' : '🖐️ Select Mode — Drag to move nodes'}
+              </span>
+              <div className="canvas-toolbar">
+                <button className={`canvas-tool-btn-light ${tool === 'wire' ? 'active' : ''}`} onClick={() => setTool('wire')}>✏️ Draw</button>
+                <button className={`canvas-tool-btn-light ${tool === 'select' ? 'active' : ''}`} onClick={() => { setTool('select'); setIsDraggingWire(false); }}>🖐️ Move</button>
+              </div>
+            </div>
+
+            <svg
+              ref={svgRef}
+              viewBox="0 0 700 460"
+              className="schematic-svg-light"
+              style={{ cursor: tool === 'wire' ? 'crosshair' : 'grab' }}
+              onMouseDown={handleCanvasMouseDown}
+              onMouseMove={handleCanvasMouseMove}
+              onMouseUp={handleCanvasMouseUp}
+              onClick={() => { if (!isDraggingWire) setSelectedBranchIndex(null); }}
+            >
+              {/* Ground symbol at node 0 */}
+              {nodePositions['0'] && <GroundSymbol x={nodePositions['0'].x} y={nodePositions['0'].y} />}
+
+              {/* Branches */}
+              {branches.map((b, i) => {
+                const p1 = ensureNodePosition(b.from);
+                const p2 = ensureNodePosition(b.to);
+                return (
+                  <ComponentSymbol key={b.id} id={b.id} type={b.type} value={b.value}
+                    x1={p1.x} y1={p1.y} x2={p2.x} y2={p2.y}
+                    isSelected={selectedBranchIndex === i}
+                    onSelect={(e) => { e.stopPropagation(); setSelectedBranchIndex(i); }}
+                  />
+                );
+              })}
+
+              {/* Live drag preview */}
+              {isDraggingWire && (
+                <g opacity="0.7">
+                  <ComponentSymbol id="" type={selectedType} value={componentValue}
+                    x1={getPreviewStart().x} y1={getPreviewStart().y}
+                    x2={mousePos.x} y2={mousePos.y}
+                    isSelected={true}
+                  />
+                  <line x1={getPreviewStart().x} y1={getPreviewStart().y}
+                    x2={mousePos.x} y2={mousePos.y}
+                    className="active-wire-line-light" />
+                </g>
+              )}
+
+              {/* Nodes */}
+              {nodes.map(label => {
+                const pos = ensureNodePosition(label);
+                const isHover = isDraggingWire && Math.sqrt((pos.x - mousePos.x)**2 + (pos.y - mousePos.y)**2) < 18;
+                return (
+                  <g key={label} transform={`translate(${pos.x}, ${pos.y})`}
+                    className={`schematic-node-light ${label === '0' ? 'ground' : ''}`}
+                    style={{ pointerEvents: isDraggingWire ? 'none' : 'auto' }}
+                  >
+                    <circle cx="0" cy="0" r="14"
+                      fill={isHover ? '#eff6ff' : '#ffffff'}
+                      stroke={isHover ? '#2563eb' : (label === '0' ? '#059669' : '#0f172a')}
+                      strokeWidth={isHover ? 3 : 2.2}
+                    />
+                    <text>{label}</text>
+                  </g>
+                );
+              })}
+            </svg>
+          </div>
+
+          {/* Inline editor */}
+          {selectedBranchIndex !== null && branches[selectedBranchIndex] && (
+            <div className="inline-editor-card">
+              <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'0.65rem' }}>
+                <strong style={{ color: COMPONENT_TYPES.find(c => c.type === branches[selectedBranchIndex].type)?.color }}>
+                  Edit: {branches[selectedBranchIndex].id}
+                </strong>
+                <button onClick={() => deleteBranch(selectedBranchIndex)} className="clear-btn-light" style={{ padding:'0.35rem 0.75rem', fontSize:'0.8rem' }}>Delete</button>
+              </div>
+              <div style={{ display:'flex', gap:'0.75rem', alignItems:'center' }}>
+                <input type="number" step="0.1" value={branches[selectedBranchIndex].value}
+                  style={{ flex: 1 }}
+                  onChange={e => { const v = parseFloat(e.target.value); if (!isNaN(v) && v > 0) { const u = [...branches]; u[selectedBranchIndex].value = v; setBranches(u); }}}
+                />
+                <button onClick={() => setSelectedBranchIndex(null)} className="add-btn-light" style={{ padding:'0.5rem 1rem', width:'auto' }}>Done</button>
+              </div>
+            </div>
+          )}
+
+          {/* Solve Bar */}
+          <div className="solve-bar">
+            <button onClick={clearCircuit} className="clear-btn-light">🗑️ Clear</button>
+            <button onClick={analyzeCircuit} disabled={branches.length === 0 || loading} className="analyze-btn-light">
+              {loading ? '⏳ Solving...' : '⚡ Analyze Circuit'}
+            </button>
+          </div>
+
+          {error && <div style={{ marginTop:'0.75rem', padding:'0.75rem 1rem', background:'#fff1f2', border:'1px solid #fda4af', borderRadius:'10px', color:'#be123c', fontSize:'0.9rem' }}>❌ {error}</div>}
+        </div>
+
+        {/* RIGHT COLUMN — Form Builder */}
+        <div className="editor-right">
+          <h2>Add Manually</h2>
+
+          <div className="input-grid-vertical">
+            <div className="input-group-light">
+              <label>Component</label>
+              <select value={selectedType} onChange={e => setSelectedType(e.target.value)}>
+                {COMPONENT_TYPES.map(c => <option key={c.type} value={c.type}>{c.name} ({c.unit})</option>)}
+              </select>
+            </div>
+            <div className="input-group-light">
+              <label>Value</label>
+              <input type="number" step="0.1" value={componentValue} onChange={e => { const v = parseFloat(e.target.value); if (!isNaN(v) && v > 0) setComponentValue(v); }} />
+            </div>
+            <div className="input-group-light">
+              <label>From Node</label>
+              <input type="text" value={formFrom} onChange={e => setFormFrom(e.target.value)} placeholder="e.g. 1" />
+            </div>
+            <div className="input-group-light">
+              <label>To Node</label>
+              <input type="text" value={formTo} onChange={e => setFormTo(e.target.value)} placeholder="e.g. 0" />
+            </div>
+          </div>
+
+          {validationError && <p style={{ color:'#be123c', fontSize:'0.8rem', marginBottom:'0.75rem' }}>{validationError}</p>}
+
+          <button onClick={addBranchFromForm} className="add-btn-light">+ Add Branch</button>
+
+          <div className="divider"></div>
+
+          <h3 style={{ fontSize:'1rem', marginTop: '0.5rem' }}>Elements ({branches.length})</h3>
+          <div className="branch-list-light">
+            {branches.length === 0 && <p style={{ textAlign:'center', color:'var(--text-muted)', padding:'1rem', fontSize:'0.85rem' }}>No elements yet.</p>}
+            {branches.map((b, i) => (
+              <div key={i} className="branch-item-light"
+                style={selectedBranchIndex === i ? { borderColor:'var(--primary)', background:'var(--primary-light)' } : {}}
+              >
+                <span className="branch-info-light" onClick={() => setSelectedBranchIndex(i)} style={{ cursor:'pointer', flex:1 }}>
+                  {b.id}: {b.from}→{b.to} ({b.value}{COMPONENT_TYPES.find(c=>c.type===b.type)?.unit})
+                </span>
+                <button onClick={() => deleteBranch(i)} className="delete-btn-light">✕</button>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* RESULTS FULL-WIDTH BOTTOM SLATE */}
+      {(results || loading) && (
+        <div className="results-bottom-slate">
+          {results && (
+            <div className="results-header-light">
+              <h2>📊 Analysis Results</h2>
+              <button onClick={exportResults} className="export-btn-light">💾 Export JSON</button>
             </div>
           )}
 
           {loading && (
-            <div className="loading-state">
-              <div className="spinner"></div>
-              <p>Analyzing circuit...</p>
-              <p className="loading-detail">Computing Cut Set & Tie Set matrices</p>
+            <div style={{ textAlign:'center', padding:'3rem' }}>
+              <div style={{ width:'40px', height:'40px', border:'3px solid var(--border-color)', borderTopColor:'var(--primary)', borderRadius:'50%', animation:'spin 1s linear infinite', margin:'0 auto 1rem' }}></div>
+              <p style={{ fontWeight:700, fontSize:'1.1rem' }}>Solving circuit matrices...</p>
+              <p style={{ color:'var(--text-muted)', fontSize:'0.85rem' }}>Computing Cut Set & Tie Set equations</p>
+              <style>{`@keyframes spin { to { transform: rotate(360deg); }}`}</style>
             </div>
           )}
 
           {results && (
-            <div className="results-content">
-              <div className="section">
-                <h3>⚙️ Equations (s-domain)</h3>
-                <div className="equations">
+            <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'2rem' }}>
+              <div>
+                <h3>⚙️ s-Domain Equations</h3>
+                <div className="equations-light">
                   {Object.entries(results.equations).map(([k, v]) => (
-                    <div key={k} className="equation-item">
-                      <Latex math={`${k} = ${v}`} />
-                    </div>
+                    <div key={k} className="equation-item-light"><Latex math={`${k} = ${v}`} /></div>
                   ))}
                 </div>
               </div>
-
-              <div className="section">
-                <h3>📈 Time Domain Expressions</h3>
-                <div className="equations">
+              <div>
+                <h3>📈 Time Domain</h3>
+                <div className="equations-light">
                   {Object.entries(results.time_domain).map(([k, v]) => (
-                    <div key={k} className="equation-item">
-                      <Latex math={`${k}(t) = ${v}`} />
-                    </div>
+                    <div key={k} className="equation-item-light"><Latex math={`${k}(t) = ${v}`} /></div>
                   ))}
                 </div>
               </div>
-
-              <div className="section">
-                <h3>📊 Transient Response Plots</h3>
-                <div className="plots-grid">
+              <div style={{ gridColumn:'1 / -1' }}>
+                <h3>📊 Transient Plots</h3>
+                <div className="plots-grid-light">
                   {results.plots.map((plot, i) => (
-                    <div key={i} className="plot-card">
-                      <img src={`data:image/png;base64,${plot.image}`} alt={plot.name} className="plot-img" />
-                      <div className="plot-footer">
-                        <p className="plot-label">{plot.name}</p>
-                        <button onClick={() => downloadPlot(plot)} className="download-plot-btn">
-                          ⬇️ Download
-                        </button>
+                    <div key={i} className="plot-card-light">
+                      <img src={`data:image/png;base64,${plot.image}`} alt={plot.name} className="plot-img-light" />
+                      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+                        <span style={{ fontFamily:"'Fira Code', monospace", fontSize:'0.8rem', color:'var(--text-muted)' }}>{plot.name}</span>
+                        <button onClick={() => downloadPlot(plot)} className="clear-btn-light" style={{ padding:'0.3rem 0.6rem', fontSize:'0.75rem' }}>⬇ Download</button>
                       </div>
                     </div>
                   ))}
@@ -359,7 +625,7 @@ function App() {
             </div>
           )}
         </div>
-      </div>
+      )}
     </>
   )
 }
