@@ -2,7 +2,8 @@ export const LandingPage = ({
   setCurrentPage, 
   isFirebaseConfigured, 
   showFirebaseBanner, 
-  setShowFirebaseBanner 
+  setShowFirebaseBanner,
+  firebaseError
 }) => {
 
   const renderFirebaseWarning = () => {
@@ -10,7 +11,7 @@ export const LandingPage = ({
     return (
       <div className="firebase-banner">
         <span>
-          ⚠️ <strong>Firebase Configuration Required</strong>: To enable user logins and saving circuit history, please copy `client/.env.example` to `client/.env` and add your Firebase API credentials.
+          ⚠️ <strong>Firebase Configuration Required</strong>: {firebaseError || "To enable user logins and saving circuit history, please copy `client/.env.example` to `client/.env` and add your Firebase API credentials."}
         </span>
         <button className="firebase-banner-close" onClick={() => setShowFirebaseBanner(false)}>✕</button>
       </div>

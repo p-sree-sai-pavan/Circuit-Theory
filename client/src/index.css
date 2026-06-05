@@ -805,7 +805,7 @@ button {
   box-shadow: 0 4px 12px rgba(37, 99, 235, 0.15);
 }
 
-.cta-btn-primary:hover {
+.cta-btn-primary:hover:not(:disabled) {
   background: var(--primary-hover);
   box-shadow: 0 6px 16px rgba(37, 99, 235, 0.25);
   transform: translateY(-1px);
@@ -820,10 +820,17 @@ button {
   box-shadow: var(--shadow-sm);
 }
 
-.cta-btn-secondary:hover {
+.cta-btn-secondary:hover:not(:disabled) {
   background: var(--bg-hover);
   border-color: var(--border-hover);
   transform: translateY(-1px);
+}
+
+button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed !important;
+  transform: none !important;
+  box-shadow: none !important;
 }
 
 /* --- Premium Auth Page --- */

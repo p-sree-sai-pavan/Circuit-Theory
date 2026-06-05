@@ -93,6 +93,7 @@ function App() {
   const [showFirebaseBanner, setShowFirebaseBanner] = useState(true);
   const [authInstance, setAuthInstance] = useState(null);
   const [dbInstance, setDbInstance] = useState(null);
+  const [firebaseError, setFirebaseError] = useState(null);
 
   // Core Circuit Solver state
   const [nodes, setNodes] = useState(['0']);
@@ -128,13 +129,18 @@ function App() {
             setDbInstance(fDb);
             setIsFirebaseConfigured(true);
             setShowFirebaseBanner(false);
+            setFirebaseError(null);
           } catch (e) {
             console.error("Failed to initialize Firebase dynamically:", e);
+            setFirebaseError("Failed to initialize Firebase: " + e.message);
           }
+        } else {
+          setFirebaseError("Firebase API key is missing. Please make sure VITE_FIREBASE_API_KEY is configured in your backend environment variables.");
         }
       })
       .catch(err => {
         console.error("Failed to retrieve Firebase config from backend:", err);
+        setFirebaseError(`Failed to connect to backend server at "${API_URL || window.location.origin}". Please ensure your Express server is running.`);
       });
   }, []);
 
@@ -403,6 +409,7 @@ function App() {
             isFirebaseConfigured={isFirebaseConfigured}
             showFirebaseBanner={showFirebaseBanner}
             setShowFirebaseBanner={setShowFirebaseBanner}
+            firebaseError={firebaseError}
           />
         );
       case 'auth':
