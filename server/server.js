@@ -4,14 +4,30 @@ const bodyParser = require('body-parser');
 const { spawn } = require('child_process');
 const path = require('path');
 
+// Load environment variables from local .env if present
+require('dotenv').config({ path: path.join(__dirname, '../client/.env') });
+
 const app = express();
 const PORT = process.env.PORT || 3000;
 
 app.use(cors());
 app.use(bodyParser.json());
 
+// Expose Firebase config dynamically at runtime
+app.get('/config/firebase', (req, res) => {
+    res.json({
+        apiKey: process.env.VITE_FIREBASE_API_KEY || "",
+        authDomain: process.env.VITE_FIREBASE_AUTH_DOMAIN || "",
+        projectId: process.env.VITE_FIREBASE_PROJECT_ID || "",
+        storageBucket: process.env.VITE_FIREBASE_STORAGE_BUCKET || "",
+        messagingSenderId: process.env.VITE_FIREBASE_MESSAGING_SENDER_ID || "",
+        appId: process.env.VITE_FIREBASE_APP_ID || ""
+    });
+});
+
 // Serve static files from the React frontend production build
 app.use(express.static(path.join(__dirname, '../client/dist')));
+
 
 app.post('/analyze', (req, res) => {
     const circuitData = req.body;

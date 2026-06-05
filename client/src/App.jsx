@@ -3,7 +3,7 @@ import axios from 'axios';
 import './App.css';
 
 // Import Firebase configs
-import { auth, db, isFirebaseConfigured } from './firebase';
+import { initFirebase } from './firebase';
 import { 
   signInWithEmailAndPassword, 
   createUserWithEmailAndPassword, 
@@ -87,7 +87,12 @@ function App() {
   const [saveCircuitName, setSaveCircuitName] = useState('');
   const [showSaveDialog, setShowSaveDialog] = useState(false);
   const [savingCircuit, setSavingCircuit] = useState(false);
-  const [showFirebaseBanner, setShowFirebaseBanner] = useState(!isFirebaseConfigured);
+
+  // Dynamic Firebase Instance Configs
+  const [isFirebaseConfigured, setIsFirebaseConfigured] = useState(false);
+  const [showFirebaseBanner, setShowFirebaseBanner] = useState(true);
+  const [authInstance, setAuthInstance] = useState(null);
+  const [dbInstance, setDbInstance] = useState(null);
 
   // Core Circuit Solver state
   const [nodes, setNodes] = useState(['0']);
@@ -111,28 +116,50 @@ function App() {
   const [error, setError] = useState(null);
   const [validationError, setValidationError] = useState('');
 
+  // Fetch Firebase config dynamically at runtime
+  useEffect(() => {
+    axios.get(`${API_URL}/config/firebase`)
+      .then(res => {
+        const config = res.data;
+        if (config.apiKey) {
+          try {
+            const { auth: fAuth, db: fDb } = initFirebase(config);
+            setAuthInstance(fAuth);
+            setDbInstance(fDb);
+            setIsFirebaseConfigured(true);
+            setShowFirebaseBanner(false);
+          } catch (e) {
+            console.error("Failed to initialize Firebase dynamically:", e);
+          }
+        }
+      })
+      .catch(err => {
+        console.error("Failed to retrieve Firebase config from backend:", err);
+      });
+  }, []);
+
   // Listen to Auth State
   useEffect(() => {
-    if (!isFirebaseConfigured) return;
-    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+    if (!authInstance) return;
+    const unsubscribe = onAuthStateChanged(authInstance, (currentUser) => {
       setUser(currentUser);
       if (currentUser) {
-        fetchHistory(currentUser.uid);
+        fetchHistory(currentUser.uid, dbInstance);
       } else {
         setSavedCircuits([]);
       }
     });
     return () => unsubscribe();
-  }, []);
+  }, [authInstance, dbInstance]);
 
   // Auth Operations
   const handleLogin = async (e) => {
     e.preventDefault();
-    if (!isFirebaseConfigured) return;
+    if (!authInstance) return;
     if (!authEmail || !authPassword) { setAuthError('Please fill all fields'); return; }
     setAuthLoading(true); setAuthError(null);
     try {
-      await signInWithEmailAndPassword(auth, authEmail, authPassword);
+      await signInWithEmailAndPassword(authInstance, authEmail, authPassword);
       setCurrentPage('workspace');
       setAuthEmail(''); setAuthPassword('');
     } catch (err) {
@@ -142,11 +169,11 @@ function App() {
 
   const handleSignUp = async (e) => {
     e.preventDefault();
-    if (!isFirebaseConfigured) return;
+    if (!authInstance) return;
     if (!authEmail || !authPassword) { setAuthError('Please fill all fields'); return; }
     setAuthLoading(true); setAuthError(null);
     try {
-      await createUserWithEmailAndPassword(auth, authEmail, authPassword);
+      await createUserWithEmailAndPassword(authInstance, authEmail, authPassword);
       setCurrentPage('workspace');
       setAuthEmail(''); setAuthPassword('');
     } catch (err) {
@@ -155,11 +182,11 @@ function App() {
   };
 
   const handleGoogleLogin = async () => {
-    if (!isFirebaseConfigured) return;
+    if (!authInstance) return;
     setAuthLoading(true); setAuthError(null);
     const provider = new GoogleAuthProvider();
     try {
-      await signInWithPopup(auth, provider);
+      await signInWithPopup(authInstance, provider);
       setCurrentPage('workspace');
     } catch (err) {
       setAuthError(err.message.replace('Firebase: ', ''));
@@ -167,13 +194,13 @@ function App() {
   };
 
   const handleLogout = async () => {
-    if (!isFirebaseConfigured) {
+    if (!authInstance) {
       setUser(null);
       setCurrentPage('landing');
       return;
     }
     try {
-      await signOut(auth);
+      await signOut(authInstance);
       setUser(null);
       setCurrentPage('landing');
     } catch (err) {
@@ -182,12 +209,13 @@ function App() {
   };
 
   // Firestore Database Operations
-  const fetchHistory = async (uid) => {
-    if (!isFirebaseConfigured) return;
+  const fetchHistory = async (uid, activeDb = dbInstance) => {
+    const targetDb = activeDb || dbInstance;
+    if (!targetDb) return;
     setProfileLoading(true);
     try {
       const q = query(
-        collection(db, 'circuits'),
+        collection(targetDb, 'circuits'),
         where('userId', '==', uid)
       );
       const querySnapshot = await getDocs(q);
@@ -204,7 +232,7 @@ function App() {
 
   const handleSaveCircuit = async (e) => {
     e.preventDefault();
-    if (!user || !isFirebaseConfigured) return;
+    if (!user || !dbInstance) return;
     if (!saveCircuitName.trim()) return;
     setSavingCircuit(true);
     try {
@@ -216,7 +244,7 @@ function App() {
         positions: nodePositions,
         createdAt: new Date().toISOString()
       };
-      const docRef = await addDoc(collection(db, 'circuits'), newCircuit);
+      const docRef = await addDoc(collection(dbInstance, 'circuits'), newCircuit);
       
       setSavedCircuits(prev => [{ id: docRef.id, ...newCircuit }, ...prev]);
       setShowSaveDialog(false);
@@ -230,10 +258,10 @@ function App() {
 
   const handleDeleteCircuit = async (id, e) => {
     e.stopPropagation();
-    if (!isFirebaseConfigured) return;
+    if (!dbInstance) return;
     if (!window.confirm("Are you sure you want to delete this saved circuit?")) return;
     try {
-      await deleteDoc(doc(db, 'circuits', id));
+      await deleteDoc(doc(dbInstance, 'circuits', id));
       setSavedCircuits(prev => prev.filter(c => c.id !== id));
     } catch (err) {
       console.error("Failed to delete circuit:", err);
@@ -241,13 +269,13 @@ function App() {
   };
 
   const handleDeleteAccount = async () => {
-    if (!user || !isFirebaseConfigured) return;
+    if (!user || !dbInstance || !authInstance) return;
     if (!window.confirm("WARNING: This will permanently delete your account and all saved circuits. This action cannot be undone. Proceed?")) return;
     
     try {
-      const q = query(collection(db, 'circuits'), where('userId', '==', user.uid));
+      const q = query(collection(dbInstance, 'circuits'), where('userId', '==', user.uid));
       const snapshot = await getDocs(q);
-      const batch = writeBatch(db);
+      const batch = writeBatch(dbInstance);
       snapshot.forEach((doc) => {
         batch.delete(doc.ref);
       });
