@@ -1,0 +1,31 @@
+{
+  "name": "circuit-analyser",
+  "version": "1.0.0",
+  "description": "Symbolic electrical circuit analyzer using Graph Theory and Laplace Transforms",
+  "main": "server/server.js",
+  "scripts": {
+    "install:server": "npm install --prefix server",
+    "install:client": "npm install --prefix client",
+    "install:all": "npm run install:server && npm run install:client",
+    "build:client": "npm run build --prefix client",
+    "build": "npm run build:client",
+    "start": "node server/server.js",
+    "dev:server": "node server/server.js",
+    "dev:client": "npm run dev --prefix client",
+    "dev": "concurrently \"npm run dev:server\" \"npm run dev:client\""
+  },
+  "keywords": [
+    "circuit",
+    "solver",
+    "laplace",
+    "graph-theory",
+    "express",
+    "react"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {},
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+}

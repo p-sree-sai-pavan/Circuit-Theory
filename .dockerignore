@@ -1,0 +1,16 @@
+node_modules/
+client/node_modules/
+server/node_modules/
+client/dist/
+venv/
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.git/
+.gitignore
+.dockerignore
+Dockerfile
+README.md
+assets/

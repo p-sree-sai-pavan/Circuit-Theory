@@ -4,6 +4,9 @@ import 'katex/dist/katex.min.css'
 import katex from 'katex'
 import './App.css'
 
+const API_URL = import.meta.env.VITE_API_URL || '';
+
+
 const Latex = ({ math }) => {
   const containerRef = useRef(null);
   useEffect(() => {
@@ -334,7 +337,7 @@ function App() {
   const analyzeCircuit = async () => {
     setLoading(true); setError(null); setResults(null);
     try {
-      const res = await axios.post('http://localhost:3000/analyze', { nodes, branches });
+      const res = await axios.post(`${API_URL}/analyze`, { nodes, branches });
       if (res.data.status === 'success') setResults(res.data);
       else setError(res.data.message || 'Analysis failed');
     } catch (err) {
