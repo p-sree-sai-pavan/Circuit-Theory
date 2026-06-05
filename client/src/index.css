@@ -703,3 +703,328 @@ button {
     grid-template-columns: 1fr;
   }
 }
+
+/* --- Premium Landing Page --- */
+.landing-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  max-width: 1000px;
+  margin: 4rem auto;
+  padding: 0 1.5rem;
+  animation: fadeIn 0.8s ease;
+}
+
+.landing-hero {
+  margin-bottom: 3rem;
+}
+
+.landing-title {
+  font-size: 3.5rem;
+  font-weight: 800;
+  letter-spacing: -0.05em;
+  line-height: 1.1;
+  margin-bottom: 1rem;
+  background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.landing-subtitle {
+  font-size: 1.25rem;
+  color: var(--text-muted);
+  max-width: 650px;
+  margin: 0 auto;
+}
+
+.landing-features {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1.5rem;
+  width: 100%;
+  margin-bottom: 3.5rem;
+}
+
+.feature-card {
+  background: var(--bg-panel);
+  border: 1px solid var(--border-color);
+  padding: 2rem 1.5rem;
+  border-radius: 20px;
+  box-shadow: var(--shadow-md);
+  text-align: left;
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.feature-card:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-lg);
+  border-color: var(--primary);
+}
+
+.feature-icon {
+  font-size: 2rem;
+  margin-bottom: 1rem;
+}
+
+.feature-card h3 {
+  font-size: 1.2rem;
+  margin-bottom: 0.5rem;
+}
+
+.feature-card p {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  line-height: 1.6;
+}
+
+.landing-cta {
+  display: flex;
+  gap: 1rem;
+  justify-content: center;
+}
+
+.cta-btn-primary {
+  background: var(--primary);
+  color: white;
+  padding: 0.85rem 2rem;
+  font-size: 1rem;
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.15);
+}
+
+.cta-btn-primary:hover {
+  background: var(--primary-hover);
+  box-shadow: 0 6px 16px rgba(37, 99, 235, 0.25);
+  transform: translateY(-1px);
+}
+
+.cta-btn-secondary {
+  background: var(--bg-panel);
+  border: 1px solid var(--border-color);
+  color: var(--text-main);
+  padding: 0.85rem 2rem;
+  font-size: 1rem;
+  box-shadow: var(--shadow-sm);
+}
+
+.cta-btn-secondary:hover {
+  background: var(--bg-hover);
+  border-color: var(--border-hover);
+  transform: translateY(-1px);
+}
+
+/* --- Premium Auth Page --- */
+.auth-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 70vh;
+  padding: 1.5rem;
+  animation: fadeIn 0.6s ease;
+}
+
+.auth-card {
+  background: var(--bg-panel);
+  border: 1px solid var(--border-color);
+  border-radius: 24px;
+  box-shadow: var(--shadow-xl);
+  width: 100%;
+  max-width: 440px;
+  padding: 2.5rem;
+}
+
+.auth-tabs {
+  display: flex;
+  border-bottom: 1px solid var(--border-color);
+  margin-bottom: 2rem;
+}
+
+.auth-tab {
+  flex: 1;
+  text-align: center;
+  padding: 0.75rem;
+  font-weight: 700;
+  font-size: 0.95rem;
+  color: var(--text-muted);
+  border: none;
+  background: none;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  transition: all 0.15s ease;
+}
+
+.auth-tab.active {
+  color: var(--primary);
+  border-bottom-color: var(--primary);
+}
+
+.auth-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.auth-title {
+  font-size: 1.5rem;
+  font-weight: 800;
+  text-align: center;
+  margin-bottom: 0.5rem;
+}
+
+.auth-subtitle {
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  text-align: center;
+  margin-bottom: 1.5rem;
+}
+
+/* --- Premium Profile & History Page --- */
+.profile-layout {
+  display: grid;
+  grid-template-columns: 300px 1fr;
+  gap: 2rem;
+  animation: fadeIn 0.6s ease;
+}
+
+@media (max-width: 768px) {
+  .profile-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+.profile-sidebar {
+  background: var(--bg-panel);
+  border: 1px solid var(--border-color);
+  border-radius: 20px;
+  padding: 2rem;
+  box-shadow: var(--shadow-md);
+  height: fit-content;
+}
+
+.profile-avatar {
+  width: 80px;
+  height: 80px;
+  background: var(--primary-light);
+  color: var(--primary);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2.2rem;
+  font-weight: 800;
+  margin: 0 auto 1.5rem;
+}
+
+.profile-email {
+  font-weight: 700;
+  font-size: 1.1rem;
+  text-align: center;
+  word-break: break-all;
+  margin-bottom: 0.25rem;
+}
+
+.profile-meta {
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  text-align: center;
+  margin-bottom: 2rem;
+}
+
+.profile-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.profile-content {
+  background: var(--bg-panel);
+  border: 1px solid var(--border-color);
+  border-radius: 20px;
+  padding: 2.5rem;
+  box-shadow: var(--shadow-md);
+}
+
+.history-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.history-card {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: var(--bg-page);
+  border: 1px solid var(--border-color);
+  border-radius: 14px;
+  padding: 1.25rem;
+  transition: all 0.2s ease;
+}
+
+.history-card:hover {
+  border-color: var(--primary);
+  box-shadow: var(--shadow-md);
+}
+
+.history-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.history-name {
+  font-weight: 700;
+  font-size: 1rem;
+}
+
+.history-details {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.history-date {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.history-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.empty-history-slate {
+  text-align: center;
+  padding: 4rem 2rem;
+  color: var(--text-muted);
+}
+
+.empty-history-icon {
+  font-size: 3rem;
+  margin-bottom: 1rem;
+}
+
+/* Firebase Warning Toast Banner */
+.firebase-banner {
+  background: var(--warning-light);
+  border: 1px solid var(--warning);
+  color: var(--warning);
+  padding: 0.75rem 1.5rem;
+  border-radius: 12px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  margin-bottom: 1.5rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  animation: fadeInDown 0.5s ease;
+}
+
+.firebase-banner-close {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--warning);
+  font-weight: bold;
+  font-size: 1rem;
+  padding: 0;
+}
