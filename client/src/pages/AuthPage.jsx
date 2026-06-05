@@ -10,6 +10,8 @@ export const AuthPage = ({
   authLoading,
   handleLogin,
   handleSignUp,
+  handleGoogleLogin,
+  isFirebaseConfigured,
   setCurrentPage
 }) => {
   return (
@@ -69,6 +71,27 @@ export const AuthPage = ({
             {authLoading 
               ? 'Processing...' 
               : (authMode === 'login' ? 'Log In' : 'Create Account')}
+          </button>
+
+          <div style={{ display: 'flex', alignItems: 'center', margin: '0.5rem 0', color: 'var(--text-muted)' }}>
+            <div style={{ flex: 1, height: '1px', background: 'var(--border-color)' }}></div>
+            <span style={{ padding: '0 0.75rem', fontSize: '0.75rem', fontWeight: 600 }}>OR</span>
+            <div style={{ flex: 1, height: '1px', background: 'var(--border-color)' }}></div>
+          </div>
+
+          <button 
+            type="button" 
+            className="google-btn" 
+            onClick={handleGoogleLogin} 
+            disabled={authLoading || !isFirebaseConfigured}
+          >
+            <svg width="18" height="18" viewBox="0 0 18 18">
+              <path fill="#EA4335" d="M9 3.6c1.62 0 3.06.56 4.21 1.66l3.15-3.15C14.45 1.07 11.97 0 9 0 5.48 0 2.44 2.02.96 4.96l3.65 2.83C5.47 5.25 7.07 3.6 9 3.6z"/>
+              <path fill="#4285F4" d="M17.64 9.2c0-.64-.06-1.25-.16-1.84H9v3.48h4.84c-.21 1.12-.84 2.07-1.79 2.7l3.64 2.83c2.13-1.97 3.35-4.87 3.35-8.17z"/>
+              <path fill="#FBBC05" d="M4.61 10.61c-.18-.56-.29-1.16-.29-1.78s.11-1.22.29-1.78L.96 4.22C.33 5.48 0 6.9 0 8.4s.33 2.92.96 4.18l3.65-2.97z"/>
+              <path fill="#34A853" d="M9 18c2.43 0 4.47-.8 5.96-2.18l-3.64-2.83c-1 .67-2.28 1.07-3.64 1.07-3.19 0-5.89-2.15-6.85-5.04L.96 12.06C2.44 15.02 5.48 18 9 18z"/>
+            </svg>
+            Continue with Google
           </button>
           
           <button 

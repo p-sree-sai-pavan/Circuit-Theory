@@ -9,7 +9,9 @@ import {
   createUserWithEmailAndPassword, 
   signOut, 
   onAuthStateChanged,
-  deleteUser
+  deleteUser,
+  GoogleAuthProvider,
+  signInWithPopup
 } from 'firebase/auth';
 import { 
   collection, 
@@ -147,6 +149,18 @@ function App() {
       await createUserWithEmailAndPassword(auth, authEmail, authPassword);
       setCurrentPage('workspace');
       setAuthEmail(''); setAuthPassword('');
+    } catch (err) {
+      setAuthError(err.message.replace('Firebase: ', ''));
+    } finally { setAuthLoading(false); }
+  };
+
+  const handleGoogleLogin = async () => {
+    if (!isFirebaseConfigured) return;
+    setAuthLoading(true); setAuthError(null);
+    const provider = new GoogleAuthProvider();
+    try {
+      await signInWithPopup(auth, provider);
+      setCurrentPage('workspace');
     } catch (err) {
       setAuthError(err.message.replace('Firebase: ', ''));
     } finally { setAuthLoading(false); }
@@ -377,6 +391,8 @@ function App() {
             authLoading={authLoading}
             handleLogin={handleLogin}
             handleSignUp={handleSignUp}
+            handleGoogleLogin={handleGoogleLogin}
+            isFirebaseConfigured={isFirebaseConfigured}
             setCurrentPage={setCurrentPage}
           />
         );

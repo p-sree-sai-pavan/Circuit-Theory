@@ -1041,3 +1041,33 @@ button {
   font-size: 1rem;
   padding: 0;
 }
+
+/* Google Sign-in Button */
+.google-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  background: #ffffff;
+  border: 1px solid var(--border-color);
+  color: var(--text-main);
+  padding: 0.75rem 1.25rem;
+  font-size: 0.9rem;
+  font-weight: 700;
+  border-radius: 8px;
+  cursor: pointer;
+  box-shadow: var(--shadow-sm);
+  transition: all 0.15s ease;
+  margin-top: 0.5rem;
+  width: 100%;
+}
+
+.google-btn:hover:not(:disabled) {
+  background: var(--bg-hover);
+  border-color: var(--border-hover);
+  box-shadow: var(--shadow-md);
+}
+
+.google-btn:active:not(:disabled) {
+  background: #f1f5f9;
+}
