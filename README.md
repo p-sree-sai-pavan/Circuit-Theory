@@ -89,8 +89,8 @@ graph TD
     subgraph Client Layer [Client Application - React + Vite]
         A1[Interactive SVG Canvas] -->|JSON Schema| A2[App State Orchestrator]
         A2 -->|POST /analyze| B
-        A3[KaTeX Math Renderer] <--|s & t Expressions| A2
-        A4[Transient Response Plotter] <--|Base64 PNG Images| A2
+        A2 -->|s & t Expressions| A3[KaTeX Math Renderer]
+        A2 -->|Base64 PNG Images| A4[Transient Response Plotter]
     end
     
     subgraph Server Layer [API Gateway - Express Server]
